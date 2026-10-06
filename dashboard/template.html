@@ -1,0 +1,502 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EdgeLab Research Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a research desk. Verdict strip on top, then the virtual account (the thing you play with),
+   then the evidence (why), then robustness and the checklist. Single column of wide panels; panels split 2-up on desktop. */
+:root{
+  --bg:#f3f5f7; --panel:#ffffff; --ink:#111a24; --ink-2:#4a5866; --ink-3:#7b8794;
+  --line:#dde3e9; --line-2:#eef1f4; --accent:#2a78d6; --accent-ink:#1c5cab; --accent-wash:#e6f0fb;
+  --bench:#eb6834; --rand:#9aa5b1; --rand-band:rgba(154,165,177,.22);
+  --good:#0f7b4c; --good-wash:#e3f4ec; --bad:#c23b3a; --bad-wash:#fbe9e8; --warn:#9a6400; --warn-wash:#fbf1dc;
+  --f-display:"Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141a; --panel:#171e26; --ink:#e9eef3; --ink-2:#a9b5c1; --ink-3:#7c8996;
+  --line:#2a3440; --line-2:#212a34; --accent:#3987e5; --accent-ink:#86b6ef; --accent-wash:#16273b;
+  --bench:#d95926; --rand:#6f7c89; --rand-band:rgba(111,124,137,.25);
+  --good:#4cc38a; --good-wash:#12291f; --bad:#ef6b6a; --bad-wash:#311819; --warn:#e0a63a; --warn-wash:#2d2312; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141a; --panel:#171e26; --ink:#e9eef3; --ink-2:#a9b5c1; --ink-3:#7c8996;
+  --line:#2a3440; --line-2:#212a34; --accent:#3987e5; --accent-ink:#86b6ef; --accent-wash:#16273b;
+  --bench:#d95926; --rand:#6f7c89; --rand-band:rgba(111,124,137,.25);
+  --good:#4cc38a; --good-wash:#12291f; --bad:#ef6b6a; --bad-wash:#311819; --warn:#e0a63a; --warn-wash:#2d2312; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);padding-inline:16px;padding-block:20px 64px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-display);font-stretch:88%;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:30px;font-weight:800}
+h2{font-size:21px;font-weight:700}
+h3{font-size:15px;font-weight:700;font-stretch:100%}
+p{margin:0;max-width:68ch}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font:500 11px/1 var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.muted{color:var(--ink-2)}
+small,.small{font-size:13px}
+header.top{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;padding-bottom:4px}
+.brand{display:flex;flex-direction:column;gap:6px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;color:var(--ink-2);font:13px var(--f-mono)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:20px}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font:600 12px/1.2 var(--f-mono);letter-spacing:.02em;white-space:nowrap}
+.pill.good{background:var(--good-wash);color:var(--good)} .pill.bad{background:var(--bad-wash);color:var(--bad)} .pill.warn{background:var(--warn-wash);color:var(--warn)}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+/* verdict */
+.verdict{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr);gap:24px;align-items:start}
+@media (max-width:820px){.verdict{grid-template-columns:1fr}}
+.verdict .lede{display:flex;flex-direction:column;gap:12px}
+.verdict .lede p{font-size:15.5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.kpi{background:var(--panel);padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .v{font:500 21px/1.15 var(--f-mono);font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12px;color:var(--ink-3)}
+.v.pos{color:var(--good)} .v.neg{color:var(--bad)}
+/* waterfall */
+.water{display:flex;flex-direction:column;gap:8px}
+.wrow{display:grid;grid-template-columns:120px 1fr 70px;gap:10px;align-items:center;font-size:13px}
+.wbar{height:14px;background:var(--line-2);border-radius:3px;position:relative;overflow:hidden}
+.wbar i{position:absolute;top:0;bottom:0;border-radius:3px}
+/* sim */
+.sim{display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px}
+@media (max-width:900px){.sim{grid-template-columns:1fr}}
+.controls{display:flex;flex-direction:column;gap:14px}
+.ctl{display:flex;flex-direction:column;gap:6px}
+.ctl label{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--ink-2)}
+.ctl label b{font:500 13px var(--f-mono);color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=number]{width:100%;font:500 15px var(--f-mono);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--ink-2);font:500 13px var(--f-body);padding:7px 4px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--accent-wash);color:var(--accent-ink);font-weight:600}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 13px var(--f-body);padding:9px 14px;border-radius:7px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:hover{filter:brightness(1.05)} .btn:focus-visible,.seg button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.balance{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px}
+.balance .big{font:500 40px/1 var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.balance .chg{font:500 16px var(--f-mono)}
+.chart{position:relative;width:100%;min-width:0}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{fill:var(--ink-3);font:11px var(--f-mono)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px}
+.legend i.band{height:10px;width:14px;border-radius:2px}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font:12px/1.5 var(--f-mono);color:var(--ink);box-shadow:0 4px 16px rgba(0,0,0,.12);white-space:nowrap;z-index:5}
+.tip b{font-weight:600}
+.statrow{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px 16px}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat .k{font-size:12px;color:var(--ink-3)}
+.stat .v{font:500 16px var(--f-mono);font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;max-height:340px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:7px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line-2)}
+th:first-child,td:first-child{text-align:left}
+th{font:500 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);background:var(--panel);position:sticky;top:0}
+td{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td.pos{color:var(--good)} td.neg{color:var(--bad)}
+.note{font-size:13px;color:var(--ink-2);border-left:2px solid var(--line);padding-left:12px}
+.checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:10px}
+.check{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;align-items:start}
+.check .ico{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--f-mono);grid-row:span 2}
+.check.pass .ico{background:var(--good-wash);color:var(--good)}
+.check.fail .ico{background:var(--bad-wash);color:var(--bad)}
+.check.todo .ico{background:var(--warn-wash);color:var(--warn)}
+.check .t{font-weight:600;font-size:14px}
+.check .d{font-size:12.5px;color:var(--ink-2)}
+.stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px}
+.stage{border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.stage.now{border-color:var(--accent);background:var(--accent-wash)}
+.stage .n{font:500 11px var(--f-mono);color:var(--ink-3);letter-spacing:.06em}
+.stage .gate{font-size:12px;color:var(--ink-2)}
+footer{color:var(--ink-3);font-size:12.5px;display:flex;flex-direction:column;gap:6px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">Intraday ML edge research · 5-minute bars · out-of-sample only</span>
+      <h1>EdgeLab Research Desk</h1>
+      <div class="meta" id="meta"></div>
+    </div>
+    <span id="verdictPill"></span>
+  </header>
+
+  <section class="panel" aria-labelledby="v-h">
+    <div class="verdict">
+      <div class="lede">
+        <span class="eyebrow">Verdict</span>
+        <h2 id="v-h">Does the model have an edge after costs?</h2>
+        <p id="verdictText"></p>
+        <div class="water" id="waterfall" aria-label="Per-trade gross edge versus cost"></div>
+      </div>
+      <div class="kpis" id="kpis"></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="sim-h">
+    <div class="panel-head">
+      <div><span class="eyebrow">Virtual money</span><h2 id="sim-h">Paper account replay</h2></div>
+      <p class="small muted">Replays the model's real out-of-sample signals through the same risk rules and cost model as the Python backtester. No trade here was seen by the model during training.</p>
+    </div>
+    <div class="sim">
+      <div class="controls">
+        <div class="ctl"><label for="cap">Starting virtual capital</label><input id="cap" type="number" min="1000" step="1000" value="25000"></div>
+        <div class="ctl"><label for="risk">Risk per trade <b id="riskV"></b></label><input id="risk" type="range" min="0.1" max="1" step="0.05" value="0.35"></div>
+        <div class="ctl"><label for="thr">Signal selectivity <b id="thrV"></b></label><input id="thr" type="range" min="0.80" max="0.995" step="0.005" value="0.95"></div>
+        <div class="ctl"><label for="cost">Cost level <b id="costV"></b></label><input id="cost" type="range" min="0" max="3" step="0.25" value="1"></div>
+        <div class="ctl"><label for="dll">Daily loss limit <b id="dllV"></b></label><input id="dll" type="range" min="0.5" max="3" step="0.25" value="1.5"></div>
+        <div class="ctl"><label for="conc">Max open positions <b id="concV"></b></label><input id="conc" type="range" min="1" max="8" step="1" value="4"></div>
+        <div class="ctl"><label>Direction</label>
+          <div class="seg" id="dir" role="group" aria-label="Direction">
+            <button type="button" data-v="both" aria-pressed="true">Both</button><button type="button" data-v="long" aria-pressed="false">Long</button><button type="button" data-v="short" aria-pressed="false">Short</button>
+          </div></div>
+        <div class="btns">
+          <button class="btn primary" id="replay" type="button">Replay day by day</button>
+          <button class="btn" id="reset" type="button">Reset</button>
+        </div>
+        <p class="small muted">Defaults match the research config. Changing selectivity after seeing results is itself a form of overfitting: every setting you try counts as a trial.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+        <div class="balance">
+          <div><div class="eyebrow">Account balance</div><div class="big" id="bal">—</div></div>
+          <div class="chg" id="chg"></div>
+          <div class="small muted" id="balDay"></div>
+        </div>
+        <div class="legend">
+          <span><i style="background:var(--accent)"></i>Model strategy</span>
+          <span><i style="background:var(--rand)"></i>Random entries, median of 100</span>
+          <span><i class="band" style="background:var(--rand-band)"></i>Random 5–95%</span>
+          <span><i style="background:var(--bench)"></i>QQQ buy &amp; hold</span>
+        </div>
+        <div class="chart" id="eqChart"></div>
+        <div class="statrow" id="simStats"></div>
+        <div class="note" id="simNote"></div>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:8px">Trade log <span class="small muted" id="logCount"></span></h3>
+      <div class="tablewrap"><table id="tradeTable"><thead><tr><th>Entry (ET)</th><th>Symbol</th><th>Side</th><th>p</th><th>Shares</th><th>Exit</th><th>Gross bp</th><th>Cost $</th><th>P&amp;L $</th><th>Balance</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <div class="grid2">
+    <section class="panel" aria-labelledby="dir-h">
+      <div><span class="eyebrow">The trap</span><h2 id="dir-h">High AUC, no direction</h2></div>
+      <p class="small muted" id="dirText"></p>
+      <div class="chart" id="decileChart"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Gross return of a long, bp</span><span><i style="background:var(--bad)"></i>Round-trip cost, bp</span></div>
+    </section>
+    <section class="panel" aria-labelledby="cal-h">
+      <div><span class="eyebrow">Model</span><h2 id="cal-h">Calibration, out of sample</h2></div>
+      <p class="small muted">Predicted probability of hitting the take-profit first versus how often it actually happened. Points on the diagonal mean the probabilities can be used for sizing and break-even rules.</p>
+      <div class="chart" id="calChart"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Long model</span><span><i style="background:var(--bench)"></i>Short model</span><span><i style="background:var(--ink-3)"></i>Perfect calibration</span></div>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="panel" aria-labelledby="rb-h">
+      <div><span class="eyebrow">Robustness</span><h2 id="rb-h">Stress tests</h2></div>
+      <div class="tablewrap" style="max-height:none"><table id="robTable"><thead><tr><th>Scenario</th><th>Trades</th><th>Net bp/trade</th><th>Return</th><th>Sharpe</th><th>Max DD</th><th>PF</th></tr></thead><tbody></tbody></table></div>
+      <p class="small muted">Cost x0 shows the raw signal. If a strategy only works at zero or 1x cost, it will not survive real fills.</p>
+    </section>
+    <section class="panel" aria-labelledby="sl-h">
+      <div><span class="eyebrow">Robustness</span><h2 id="sl-h">Where the P&amp;L came from</h2></div>
+      <div class="seg" id="sliceSeg" role="group" aria-label="Slice"></div>
+      <div class="chart" id="sliceChart"></div>
+      <p class="small muted">Net P&amp;L by slice of the base backtest. A real edge shows up in most slices; one lucky symbol or week does not count.</p>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="panel" aria-labelledby="fi-h">
+      <div><span class="eyebrow">Model</span><h2 id="fi-h">What the model listens to</h2></div>
+      <p class="small muted">Permutation importance on held-out data: how much log-loss worsens when a feature is shuffled. Volatility features dominate, which is why the model predicts movement size rather than direction.</p>
+      <div class="chart" id="fiChart"></div>
+    </section>
+    <section class="panel" aria-labelledby="fo-h">
+      <div><span class="eyebrow">Walk-forward</span><h2 id="fo-h">Fold by fold</h2></div>
+      <div class="tablewrap" style="max-height:none"><table id="foldTable"><thead><tr><th>Test window</th><th>Train rows</th><th>AUC long</th><th>AUC short</th><th>Logit AUC</th><th>Direction AUC</th></tr></thead><tbody></tbody></table></div>
+      <p class="small muted">Expanding training window, one-session embargo, five-session test blocks. Every test block is strictly after its training data.</p>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="ck-h">
+    <div class="panel-head"><div><span class="eyebrow">Go / no-go</span><h2 id="ck-h">Edge checklist</h2></div><span id="ckScore" class="pill"></span></div>
+    <div class="checklist" id="checklist"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="st-h">
+    <div><span class="eyebrow">Path to real money</span><h2 id="st-h">Stage gates</h2></div>
+    <div class="stages" id="stages"></div>
+  </section>
+
+  <footer>
+    <span id="foot"></span>
+    <span>Research tool, not investment advice. Past and simulated results do not predict future returns.</span>
+  </footer>
+</div>
+
+<script id="report" type="application/json">/*__REPORT__*/</script>
+<script id="simdata" type="application/json">/*__SIM__*/</script>
+<script>
+(()=>{
+const R = JSON.parse(document.getElementById('report').textContent);
+const SIM = JSON.parse(document.getElementById('simdata').textContent);
+const $ = s=>document.querySelector(s);
+const fmt$ = (x,d=0)=> (x<0?'−$':'$')+Math.abs(x).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct = (x,d=1)=> x==null||!isFinite(x)?'—':(x>0?'+':x<0?'−':'')+Math.abs(x*100).toFixed(d)+'%';
+const num = (x,d=2)=> x==null||!isFinite(x)?'—':(x<0?'−':'')+Math.abs(x).toFixed(d);
+const share = x=> x==null||!isFinite(x)?'—':Math.round(x*100)+'%';
+const sgn = x=> x>0?'pos':x<0?'neg':'';
+const S = R.summary, D = R.diagnostics||{}, C = R.config;
+const css = n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- header + verdict ---------- */
+$('#meta').innerHTML = [
+  `${R.data.symbols} symbols`, `${R.data.sessions} sessions`, `${R.dataset.oos_days} out-of-sample days`,
+  `${R.data.first.slice(0,10)} → ${R.data.last.slice(0,10)}`, `model: ${R.backend}`].map(x=>`<span>${x}</span>`).join('');
+const costBps = S.avg_cost_bps||0, grossBps=S.avg_gross_bps||0, netBps=S.avg_net_bps||0;
+const pv = S.p_value_trades, rp = R.random_baseline.p_value;
+const edge = netBps>0 && pv<0.05 && rp<0.05 && (S.deflated_sharpe||0)>0.95;
+$('#verdictPill').innerHTML = edge ? `<span class="pill good"><span class="dot"></span>Candidate edge, needs paper trading</span>`
+  : `<span class="pill bad"><span class="dot"></span>No statistically significant edge</span>`;
+$('#verdictText').innerHTML = edge
+ ? `The strategy made <b>${num(netBps,1)} bp</b> per trade after costs with p = ${num(pv,3)}. That is promising but not proof: it still has to pass the stage gates below, including months of paper trading.`
+ : `Over ${S.trades} out-of-sample trades the model earned <b>${num(grossBps,1)} bp</b> per trade before costs and paid <b>${num(costBps,1)} bp</b> in spread, slippage and fees, leaving <b>${num(netBps,1)} bp</b>. A t-test gives p = ${num(pv,2)}, and random entries did as well or better ${Math.round(rp*100)}% of the time. With ${R.dataset.oos_days} test days the sample is also far too small to trust in either direction. Do not trade this with real money.`;
+const wmax = Math.max(Math.abs(grossBps),costBps,Math.abs(netBps),1);
+$('#waterfall').innerHTML = [['Gross edge',grossBps,'var(--accent)'],['Costs',-costBps,'var(--bad)'],['Net per trade',netBps,netBps>=0?'var(--good)':'var(--bad)']]
+ .map(([k,v,c])=>`<div class="wrow"><span class="muted">${k}</span><div class="wbar"><i style="left:${v<0?50-50*Math.abs(v)/wmax:50}%;width:${50*Math.abs(v)/wmax}%;background:${c}"></i><i style="left:50%;width:1px;background:var(--ink-3)"></i></div><span class="num" style="text-align:right">${num(v,1)} bp</span></div>`).join('');
+const kp = [
+ ['Net bp / trade', num(netBps,1), sgn(netBps), `gross ${num(grossBps,1)} − cost ${num(costBps,1)}`],
+ ['Trades', S.trades, '', `${share(S.win_rate)} win rate`],
+ ['Total return', pct(S.total_return,2), sgn(S.total_return), `${S.days} days, $${(C.start_equity/1000).toFixed(0)}k start`],
+ ['Sharpe', num(S.sharpe,2), sgn(S.sharpe), `95% CI ${num(S.sharpe_ci95?.[0],1)} to ${num(S.sharpe_ci95?.[1],1)}`],
+ ['Sortino', num(S.sortino,2), sgn(S.sortino), 'downside-only volatility'],
+ ['Max drawdown', pct(S.max_drawdown,2), 'neg', 'peak to trough, daily'],
+ ['Profit factor', num(S.profit_factor,2), S.profit_factor>1?'pos':'neg', 'gross wins / gross losses'],
+ ['p-value', num(pv,3), pv<0.05?'pos':'', 'mean trade return = 0'],
+ ['vs random', num(rp,3), rp<0.05?'pos':'', 'share of random runs as good'],
+ ['Deflated Sharpe', num(S.deflated_sharpe,2), S.deflated_sharpe>0.95?'pos':'', `after ${C.n_configs_tried} configs tried`],
+ ['Daily turnover', num(S.daily_turnover_x,2)+'×', '', 'traded notional / equity'],
+ ['CAGR (extrap.)', pct(S.cagr_extrapolated,1), sgn(S.cagr_extrapolated), 'meaningless on 2 months'],
+];
+$('#kpis').innerHTML = kp.map(([k,v,c,s])=>`<div class="kpi"><span class="eyebrow">${k}</span><span class="v ${c}">${v}</span><span class="s">${s}</span></div>`).join('');
+
+/* ---------- SVG helpers ---------- */
+const NS='http://www.w3.org/2000/svg';
+function svgEl(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);parent&&parent.appendChild(e);return e;}
+function niceTicks(lo,hi,n=5){const span=hi-lo||1;const step0=span/n;const mag=10**Math.floor(Math.log10(step0));const step=[1,2,2.5,5,10].map(m=>m*mag).find(s=>s>=step0);const t=[];for(let v=Math.ceil(lo/step)*step;v<=hi+1e-9;v+=step)t.push(+v.toFixed(10));return t;}
+function frame(el,W,H,m){el.innerHTML='';const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,role:'img'},el);const tip=document.createElement('div');tip.className='tip';tip.hidden=true;el.appendChild(tip);return{svg,tip,iw:W-m.l-m.r,ih:H-m.t-m.b};}
+function yAxis(svg,ticks,y,m,W,f){ticks.forEach(t=>{svgEl('line',{x1:m.l,x2:W-m.r,y1:y(t),y2:y(t),stroke:css('--line-2'),'stroke-width':1},svg);const tx=svgEl('text',{x:m.l-8,y:y(t)+4,'text-anchor':'end'},svg);tx.textContent=f(t);});}
+function placeTip(el,tip,px,py){const r=el.getBoundingClientRect();tip.hidden=false;const tw=tip.offsetWidth,th=tip.offsetHeight;let x=px+14,y=py-th-10;if(x+tw>r.width)x=px-tw-14;if(y<0)y=py+14;tip.style.left=x+'px';tip.style.top=y+'px';}
+
+/* ---------- simulator ---------- */
+const COLS = SIM.cols; const ix = Object.fromEntries(COLS.map((c,i)=>[c,i]));
+const EPOCH = Date.UTC(2000,0,1,5,0); // 2000-01-01 00:00 EST
+const dfmt = new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+const dayCache=new Map();
+function etParts(m){const p=dfmt.formatToParts(new Date(EPOCH+m*60000));const g=t=>p.find(x=>x.type===t).value;return{date:`${g('year')}-${g('month')}-${g('day')}`,time:`${g('hour')}:${g('minute')}`};}
+function prep(rows){return rows.map(r=>{const k=Math.floor(r[ix.e]/1440)*1440;let d=dayCache.get(r[ix.e]);if(!d){d=etParts(r[ix.e]);dayCache.set(r[ix.e],d);}return{e:r[ix.e],xl:r[ix.xl],xs:r[ix.xs],s:r[ix.s],px:r[ix.px],b:r[ix.b],pl:r[ix.pl],ps:r[ix.ps],ql:r[ix.ql],qs:r[ix.qs],gl:r[ix.gl],gs:r[ix.gs],rl:r[ix.rl],rs:r[ix.rs],date:d.date,time:d.time};});}
+const CAND = prep(SIM.cand), POOL = prep(SIM.pool);
+const DAYS = R.equity.map(x=>x.date);
+const poolByDay = {}; POOL.forEach(r=>{(poolByDay[r.date] ||= []).push(r);});
+const QQQ = R.equity.map(x=>x.qqq);
+const CC = C.costs, RC = C.risk;
+
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function cost(px,sh,reason,mult){const n=px*sh;const ent=CC.half_spread_bps+CC.slippage_bps+CC.latency_bps;const ex=reason===1?0:reason===2?CC.half_spread_bps+CC.slippage_bps+CC.stop_extra_slippage_bps:CC.half_spread_bps+CC.slippage_bps;return (n*(ent+ex)/1e4+2*Math.max(CC.min_commission,CC.commission_per_share*sh)+n*CC.sec_fee_per_dollar_sold+Math.min(8.3,CC.finra_taf_per_share*sh))*mult;}
+function signals(P){const out=[];for(const r of CAND){const be=(r.b+4.5*P.cost)/(2*r.b);const L=r.ql>=P.thr&&r.pl>be,Sh=r.qs>=P.thr&&r.ps>be;let d=0;if(L&&(!Sh||r.pl>=r.ps))d=1;else if(Sh)d=-1;if(!d||(P.dir==='long'&&d!==1)||(P.dir==='short'&&d!==-1))continue;out.push(mk(r,d));}return out.sort((a,b)=>a.e-b.e||b.p-a.p);}
+function mk(r,d){return d===1?{e:r.e,x:r.xl,s:r.s,px:r.px,b:r.b/1e4,g:r.gl/1e4,re:r.rl,p:r.pl,d:1,date:r.date,time:r.time}:{e:r.e,x:r.xs,s:r.s,px:r.px,b:r.b/1e4,g:r.gs/1e4,re:r.rs,p:r.ps,d:-1,date:r.date,time:r.time};}
+function randomize(sig,seed,P){const rnd=mulberry(seed);return sig.map(t=>{const pool=poolByDay[t.date];if(!pool||!pool.length)return t;const r=pool[Math.floor(rnd()*pool.length)];const d=P.dir==='long'?1:P.dir==='short'?-1:(rnd()<.5?1:-1);return mk(r,d);});}
+function simulate(sig,P){
+  const ev=[];sig.forEach((t,i)=>{ev.push([t.e,1,i]);ev.push([t.x,0,i]);});
+  ev.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  let eq=P.cap,peak=P.cap,killed=false,day=null,real=0,nday=0,halt=false;const open=new Map(),bySym=new Map(),cool=new Map(),trades=[],pnlDay={};
+  for(const [t,k,i] of ev){const s=sig[i];
+    if(s.date!==day){day=s.date;real=0;nday=0;halt=false;}
+    if(k===1){
+      if(killed||halt||s.time>RC.no_entry_after||bySym.has(s.s)||open.size>=P.conc||nday>=RC.max_trades_per_day||(cool.get(s.s)||-1)>t)continue;
+      let orisk=0;open.forEach(o=>orisk+=o.sh*o.px*o.b);const rd=eq*P.risk;
+      if(real-orisk-rd< -P.dll*eq)continue;
+      let sh=Math.floor(rd/(s.px*s.b));sh=Math.min(sh,Math.floor(RC.max_position_notional*eq/s.px));
+      let gross=0;open.forEach(o=>gross+=o.sh*o.px);sh=Math.min(sh,Math.floor(Math.max(0,eq-gross)/s.px));
+      if(sh<1)continue;open.set(i,{sh,px:s.px,b:s.b});bySym.set(s.s,i);nday++;
+    }else if(open.has(i)){
+      const o=open.get(i);open.delete(i);bySym.delete(s.s);
+      const c=cost(o.px,o.sh,s.re,P.cost);const pnl=o.sh*o.px*s.g-c;eq+=pnl;real+=pnl;peak=Math.max(peak,eq);
+      if(pnl<0)cool.set(s.s,t+RC.cooldown_bars_after_loss*5);
+      if(real<=-P.dll*eq)halt=true; if(eq<=(1-RC.max_drawdown_kill)*peak)killed=true;
+      pnlDay[s.date]=(pnlDay[s.date]||0)+pnl;
+      trades.push({...s,sh:o.sh,cost:c,pnl,bal:eq,notional:o.sh*o.px});
+    }}
+  let e=P.cap;const curve=DAYS.map(d=>(e+=pnlDay[d]||0));
+  return{trades,curve,killed};
+}
+function stats(res,P){const tr=res.trades,cv=res.curve;const rets=cv.map((v,i)=>v/(i?cv[i-1]:P.cap)-1);
+  const m=rets.reduce((a,b)=>a+b,0)/rets.length;const sd=Math.sqrt(rets.reduce((a,b)=>a+(b-m)**2,0)/(rets.length-1));
+  let pk=P.cap,dd=0;cv.forEach(v=>{pk=Math.max(pk,v);dd=Math.min(dd,v/pk-1);});
+  const w=tr.filter(t=>t.pnl>0),l=tr.filter(t=>t.pnl<=0);const gw=w.reduce((a,t)=>a+t.pnl,0),gl=-l.reduce((a,t)=>a+t.pnl,0);
+  const nb=tr.map(t=>t.pnl/t.notional*1e4);const mb=nb.reduce((a,b)=>a+b,0)/(nb.length||1);const sb=Math.sqrt(nb.reduce((a,b)=>a+(b-mb)**2,0)/Math.max(1,nb.length-1));
+  return{ret:cv[cv.length-1]/P.cap-1,sharpe:sd>0?Math.sqrt(252)*m/sd:0,dd,trades:tr.length,win:tr.length?w.length/tr.length:0,pf:gl>0?gw/gl:null,netbp:mb,t:sb>0?mb/(sb/Math.sqrt(nb.length)):0,costs:tr.reduce((a,t)=>a+t.cost,0),final:cv[cv.length-1]};}
+
+const P = {cap:25000,risk:.0035,thr:.95,cost:1,dll:.015,conc:4,dir:'both'};
+try{const s=JSON.parse(localStorage.getItem('edgelab.sim')||'null');if(s)Object.assign(P,s);}catch(e){}
+function syncInputs(){$('#cap').value=P.cap;$('#risk').value=P.risk*100;$('#thr').value=P.thr;$('#cost').value=P.cost;$('#dll').value=P.dll*100;$('#conc').value=P.conc;
+  document.querySelectorAll('#dir button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===P.dir));labels();}
+function labels(){$('#riskV').textContent=(P.risk*100).toFixed(2)+'%';$('#thrV').textContent='top '+(100-P.thr*100).toFixed(1)+'%';$('#costV').textContent=P.cost.toFixed(2)+'×';$('#dllV').textContent='−'+(P.dll*100).toFixed(2)+'%';$('#concV').textContent=P.conc;}
+let last=null, anim=null;
+function run(){labels();try{localStorage.setItem('edgelab.sim',JSON.stringify(P));}catch(e){}
+  const sig=signals(P);const res=simulate(sig,P);const st=stats(res,P);
+  const rc=[],rs=[];for(let k=0;k<100;k++){const rr=simulate(randomize(sig,k+1,P),P);rc.push(rr.curve);rs.push(stats(rr,P));}
+  const q=(arr,p)=>{const s=[...arr].sort((a,b)=>a-b);return s[Math.min(s.length-1,Math.floor(p*s.length))];};
+  const band=DAYS.map((_,i)=>{const col=rc.map(c=>c[i]);return[q(col,.05),q(col,.5),q(col,.95)];});
+  const beat=rs.filter(r=>r.final>=st.final).length/100;
+  const qqq=QQQ.map(v=>v/QQQ[0]*P.cap);
+  last={res,st,band,qqq,beat};drawSim(DAYS.length);
+}
+function drawSim(n){const {res,st,band,qqq,beat}=last;
+  const cv=res.curve.slice(0,n);const cur=cv[cv.length-1];
+  $('#bal').textContent=fmt$(cur);const ch=cur/P.cap-1;$('#chg').innerHTML=`<span class="${sgn(ch)==='pos'?'v pos':'v neg'}">${fmt$(cur-P.cap)} (${pct(ch,2)})</span>`;
+  $('#balDay').textContent=`after ${n} of ${DAYS.length} trading days · ${DAYS[n-1]}`;
+  eqChart(cv,band,qqq,n);
+  const shown=res.trades.filter(t=>t.date<=DAYS[n-1]);
+  const items=[['Trades',st.trades],['Net bp / trade',num(st.netbp,1)],['Win rate',share(st.win)],['Profit factor',num(st.pf,2)],['Sharpe',num(st.sharpe,2)],['Max drawdown',pct(st.dd,2)],['Costs paid',fmt$(st.costs)],['Beaten by random',Math.round(beat*100)+'%']];
+  $('#simStats').innerHTML=items.map(([k,v])=>`<div class="stat"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+  $('#simNote').innerHTML = res.killed?`<b>Kill switch fired:</b> the account fell ${(RC.max_drawdown_kill*100).toFixed(0)}% from its peak and trading stopped for human review.`
+   : beat>=.05?`${Math.round(beat*100)} of 100 random-entry accounts, trading the same days with the same rules and costs, ended with as much money or more. The model's selections are not distinguishable from luck at these settings.`
+   : `Fewer than 5 of 100 random-entry accounts did this well. Treat that as a hypothesis for paper trading, especially if you tuned the sliders to get here.`;
+  $('#logCount').textContent=`${shown.length} trades`;
+  $('#tradeTable tbody').innerHTML=shown.slice().reverse().slice(0,300).map(t=>`<tr><td>${t.date} ${t.time}</td><td>${t.s}</td><td>${t.d>0?'Long':'Short'}</td><td>${t.p.toFixed(3)}</td><td>${t.sh}</td><td>${['','Target','Stop','Time'][t.re]}</td><td class="${sgn(t.g)}">${(t.g*1e4).toFixed(1)}</td><td>${t.cost.toFixed(2)}</td><td class="${sgn(t.pnl)}">${t.pnl.toFixed(2)}</td><td>${fmt$(t.bal)}</td></tr>`).join('');
+}
+function eqChart(cv,band,qqq,n){const el=$('#eqChart');const W=760,H=300,m={l:64,r:16,t:12,b:28};const {svg,tip,iw,ih}=frame(el,W,H,m);
+  const all=[...band.flat(),...qqq,...cv,P.cap];const lo=Math.min(...all),hi=Math.max(...all);const pad=(hi-lo)*.06||1;
+  const x=i=>m.l+iw*i/(DAYS.length-1),y=v=>m.t+ih*(1-(v-(lo-pad))/((hi+pad)-(lo-pad)));
+  yAxis(svg,niceTicks(lo-pad,hi+pad,5),y,m,W,v=>'$'+(v/1000).toFixed(1)+'k');
+  svgEl('line',{x1:m.l,x2:W-m.r,y1:y(P.cap),y2:y(P.cap),stroke:css('--ink-3'),'stroke-dasharray':'3 4','stroke-width':1},svg);
+  [0,Math.floor((DAYS.length-1)/2),DAYS.length-1].forEach(i=>{const t=svgEl('text',{x:x(i),y:H-8,'text-anchor':i?i===DAYS.length-1?'end':'middle':'start'},svg);t.textContent=DAYS[i].slice(5);});
+  const pth=(arr,f)=>arr.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(f(v)).toFixed(1)}`).join('');
+  const bandPath=band.map((b,i)=>`${i?'L':'M'}${x(i)},${y(b[2])}`).join('')+band.map((b,i)=>`L${x(band.length-1-i)},${y(band[band.length-1-i][0])}`).join('')+'Z';
+  svgEl('path',{d:bandPath,fill:css('--rand-band'),stroke:'none'},svg);
+  svgEl('path',{d:pth(band,b=>b[1]),fill:'none',stroke:css('--rand'),'stroke-width':2},svg);
+  svgEl('path',{d:pth(qqq,v=>v),fill:'none',stroke:css('--bench'),'stroke-width':2},svg);
+  svgEl('path',{d:pth(cv,v=>v),fill:'none',stroke:css('--accent'),'stroke-width':2.5,'stroke-linejoin':'round'},svg);
+  svgEl('circle',{cx:x(cv.length-1),cy:y(cv[cv.length-1]),r:4.5,fill:css('--accent'),stroke:css('--panel'),'stroke-width':2},svg);
+  const cross=svgEl('line',{y1:m.t,y2:H-m.b,stroke:css('--ink-3'),'stroke-width':1,visibility:'hidden'},svg);
+  const hit=svgEl('rect',{x:m.l,y:m.t,width:iw,height:ih,fill:'transparent'},svg);
+  hit.addEventListener('pointermove',ev=>{const r=svg.getBoundingClientRect();const sx=(ev.clientX-r.left)*W/r.width;const i=Math.max(0,Math.min(DAYS.length-1,Math.round((sx-m.l)/iw*(DAYS.length-1))));
+    cross.setAttribute('x1',x(i));cross.setAttribute('x2',x(i));cross.setAttribute('visibility','visible');
+    tip.innerHTML=`<b>${DAYS[i]}</b><br>Model ${i<cv.length?fmt$(cv[i]):'—'}<br>Random median ${fmt$(band[i][1])}<br>QQQ hold ${fmt$(qqq[i])}`;placeTip(el,tip,x(i)*r.width/W,y(i<cv.length?cv[i]:band[i][1])*r.height/H);});
+  hit.addEventListener('pointerleave',()=>{tip.hidden=true;cross.setAttribute('visibility','hidden');});
+}
+function bindRange(id,key,scale=1,intg=false){$(id).addEventListener('input',e=>{P[key]=intg?parseInt(e.target.value):parseFloat(e.target.value)/scale;stopAnim();run();});}
+bindRange('#risk','risk',100);bindRange('#thr','thr');bindRange('#cost','cost');bindRange('#dll','dll',100);bindRange('#conc','conc',1,true);
+$('#cap').addEventListener('change',e=>{P.cap=Math.max(1000,parseFloat(e.target.value)||25000);stopAnim();run();});
+document.querySelectorAll('#dir button').forEach(b=>b.addEventListener('click',()=>{P.dir=b.dataset.v;document.querySelectorAll('#dir button').forEach(x=>x.setAttribute('aria-pressed',x===b));stopAnim();run();}));
+function stopAnim(){if(anim){clearInterval(anim);anim=null;$('#replay').textContent='Replay day by day';}}
+$('#replay').addEventListener('click',()=>{if(anim){stopAnim();drawSim(DAYS.length);return;}let n=1;$('#replay').textContent='Stop replay';drawSim(n);anim=setInterval(()=>{n++;drawSim(n);if(n>=DAYS.length)stopAnim();},matchMedia('(prefers-reduced-motion: reduce)').matches?20:260);});
+$('#reset').addEventListener('click',()=>{Object.assign(P,{cap:25000,risk:.0035,thr:.95,cost:1,dll:.015,conc:4,dir:'both'});syncInputs();stopAnim();run();});
+syncInputs();run();
+
+/* ---------- direction trap ---------- */
+$('#dirText').innerHTML=`The long model scores AUC <b>${num(D.auc_any_barrier,2)}</b> at predicting whether price will move far enough to hit <i>a</i> barrier. That sounds strong, but it mostly predicts volatility: long and short probabilities correlate at <b>${num(D.corr_p_long_p_short,2)}</b>. Asked which <i>direction</i> wins, it scores AUC <b>${num(D.auc_direction,3)}</b>, close to a coin flip at 0.5. Below, the bars show gross long returns by decile of p(long) − p(short). Even the best decile does not clear costs.`;
+(function(){const el=$('#decileChart');const rows=D.edge_deciles||[];const W=520,H=240,m={l:44,r:12,t:12,b:34};const {svg,tip,iw,ih}=frame(el,W,H,m);
+  const cb=costBps;const vals=rows.map(r=>r.gross_long_bps);const lo=Math.min(0,...vals,-cb)-1,hi=Math.max(...vals,cb)+1;
+  const y=v=>m.t+ih*(1-(v-lo)/(hi-lo));const bw=iw/rows.length;
+  yAxis(svg,niceTicks(lo,hi,5),y,m,W,v=>v.toFixed(0));
+  rows.forEach((r,i)=>{const x0=m.l+i*bw+2,h=Math.abs(y(r.gross_long_bps)-y(0));const rect=svgEl('rect',{x:x0,y:Math.min(y(0),y(r.gross_long_bps)),width:bw-4,height:Math.max(1,h),rx:3,fill:css('--accent')},svg);
+    const t=svgEl('text',{x:x0+(bw-4)/2,y:H-16,'text-anchor':'middle'},svg);t.textContent=r.decile;
+    rect.addEventListener('pointermove',ev=>{const b=el.getBoundingClientRect();tip.innerHTML=`<b>Decile ${r.decile}</b><br>edge ${r.edge.toFixed(3)}<br>gross ${r.gross_long_bps.toFixed(2)} bp<br>n = ${r.n.toLocaleString()}`;placeTip(el,tip,ev.clientX-b.left,ev.clientY-b.top);});
+    rect.addEventListener('pointerleave',()=>tip.hidden=true);});
+  svgEl('line',{x1:m.l,x2:W-m.r,y1:y(0),y2:y(0),stroke:css('--ink-3'),'stroke-width':1},svg);
+  svgEl('line',{x1:m.l,x2:W-m.r,y1:y(cb),y2:y(cb),stroke:css('--bad'),'stroke-width':2,'stroke-dasharray':'5 4'},svg);
+  const t=svgEl('text',{x:W-m.r,y:y(cb)-6,'text-anchor':'end'},svg);t.textContent=`cost ${cb.toFixed(1)} bp`;
+  const xl=svgEl('text',{x:m.l+iw/2,y:H-2,'text-anchor':'middle'},svg);xl.textContent='decile of p(long) − p(short), 1 = most bearish';
+})();
+
+/* ---------- calibration ---------- */
+(function(){const el=$('#calChart');const W=520,H=260,m={l:44,r:12,t:12,b:34};const {svg,tip,iw,ih}=frame(el,W,H,m);
+  const all=[...R.calibration.long,...R.calibration.short];const hi=Math.min(1,Math.max(...all.map(r=>Math.max(r.p,r.hit)))*1.08);
+  const x=v=>m.l+iw*v/hi,y=v=>m.t+ih*(1-v/hi);const tk=niceTicks(0,hi,5);
+  yAxis(svg,tk,y,m,W,v=>v.toFixed(2));tk.forEach(v=>{const t=svgEl('text',{x:x(v),y:H-18,'text-anchor':'middle'},svg);t.textContent=v.toFixed(2);});
+  const xl=svgEl('text',{x:m.l+iw/2,y:H-2,'text-anchor':'middle'},svg);xl.textContent='predicted probability → observed hit rate';
+  svgEl('line',{x1:x(0),y1:y(0),x2:x(hi),y2:y(hi),stroke:css('--ink-3'),'stroke-dasharray':'4 4'},svg);
+  [['long','--accent'],['short','--bench']].forEach(([s,c])=>{const rows=R.calibration[s];
+    svgEl('path',{d:rows.map((r,i)=>`${i?'L':'M'}${x(r.p)},${y(r.hit)}`).join(''),fill:'none',stroke:css(c),'stroke-width':2},svg);
+    rows.forEach(r=>{const cc=svgEl('circle',{cx:x(r.p),cy:y(r.hit),r:4.5,fill:css(c),stroke:css('--panel'),'stroke-width':2},svg);
+      const hz=svgEl('circle',{cx:x(r.p),cy:y(r.hit),r:12,fill:'transparent'},svg);
+      hz.addEventListener('pointermove',ev=>{const b=el.getBoundingClientRect();tip.innerHTML=`<b>${s}</b><br>predicted ${r.p.toFixed(3)}<br>observed ${r.hit.toFixed(3)}<br>gross ${r.gross_bps.toFixed(1)} bp · n ${r.n.toLocaleString()}`;placeTip(el,tip,ev.clientX-b.left,ev.clientY-b.top);});
+      hz.addEventListener('pointerleave',()=>tip.hidden=true);});});
+})();
+
+/* ---------- robustness ---------- */
+const RB=R.robustness, V=R.variants||{};
+const rrows=[['Base (1× cost, top 5%)',RB['cost_x1']],['Zero cost',RB['cost_x0']],['2× cost',RB['cost_x2']],['3× cost',RB['cost_x3']],
+ ['Top 20% of signals',RB['quantile_0.8']],['Top 10%',RB['quantile_0.9']],['Top 2%',RB['quantile_0.98']],['Top 1%',RB['quantile_0.99']]];
+if(V['fixed_0.4pct'])rrows.push([`Fixed ±0.4% target (your spec)`,V['fixed_0.4pct']]);
+$('#robTable tbody').innerHTML=rrows.filter(r=>r[1]).map(([k,s])=>`<tr><td>${k}</td><td>${s.trades??0}</td><td class="${sgn(s.avg_net_bps)}">${num(s.avg_net_bps,1)}</td><td class="${sgn(s.total_return)}">${pct(s.total_return,2)}</td><td>${num(s.sharpe,2)}</td><td>${pct(s.max_drawdown,2)}</td><td>${num(s.profit_factor,2)}</td></tr>`).join('');
+const slices={'by_symbol':'Symbol','by_fold':'Test block','by_hour':'Hour','by_direction':'Side','by_trend':'Market trend','by_vol_regime':'Volatility'};
+const seg=$('#sliceSeg');let cur='by_fold';
+Object.entries(slices).filter(([k])=>RB[k]).forEach(([k,lab])=>{const b=document.createElement('button');b.type='button';b.textContent=lab;b.setAttribute('aria-pressed',k===cur);b.onclick=()=>{cur=k;seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));drawSlice();};seg.appendChild(b);});
+function drawSlice(){const el=$('#sliceChart');let rows=[...(RB[cur]||[])];if(cur==='by_symbol')rows.sort((a,b)=>b.pnl-a.pnl);
+  if(cur==='by_fold')rows=rows.map(r=>({...r,key:(R.folds[+r.key]?.test_start||r.key).slice(5)+' wk'}));
+  if(cur==='by_hour')rows=rows.map(r=>({...r,key:r.key+':00'}));
+  const rh=24,W=520,m={l:96,r:70,t:6,b:6},H=m.t+m.b+rows.length*rh;const {svg,tip,iw}=frame(el,W,H,m);
+  const mx=Math.max(1,...rows.map(r=>Math.abs(r.pnl)));const x=v=>m.l+iw/2+iw/2*v/mx;
+  svgEl('line',{x1:x(0),x2:x(0),y1:m.t,y2:H-m.b,stroke:css('--ink-3')},svg);
+  rows.forEach((r,i)=>{const yy=m.t+i*rh+4;const lab=svgEl('text',{x:m.l-8,y:yy+12,'text-anchor':'end'},svg);lab.textContent=r.key;
+    const rect=svgEl('rect',{x:Math.min(x(0),x(r.pnl)),y:yy,width:Math.max(1,Math.abs(x(r.pnl)-x(0))),height:rh-8,rx:3,fill:css(r.pnl>=0?'--good':'--bad')},svg);
+    const v=svgEl('text',{x:W-4,y:yy+12,'text-anchor':'end'},svg);v.textContent=fmt$(r.pnl);
+    rect.addEventListener('pointermove',ev=>{const b=el.getBoundingClientRect();tip.innerHTML=`<b>${r.key}</b><br>${r.trades} trades<br>net ${r.net_bps.toFixed(1)} bp/trade<br>win ${(r.win*100).toFixed(0)}%<br>P&L ${fmt$(r.pnl,2)}`;placeTip(el,tip,ev.clientX-b.left,ev.clientY-b.top);});
+    rect.addEventListener('pointerleave',()=>tip.hidden=true);});}
+drawSlice();
+
+/* ---------- importance + folds ---------- */
+(function(){const el=$('#fiChart');const rows=R.importance.slice(0,14);const rh=22,W=520,m={l:150,r:56,t:4,b:4},H=m.t+m.b+rows.length*rh;const {svg,iw}=frame(el,W,H,m);
+  const mx=Math.max(...rows.map(r=>r.value),1e-9);
+  rows.forEach((r,i)=>{const yy=m.t+i*rh+3;const t=svgEl('text',{x:m.l-8,y:yy+12,'text-anchor':'end'},svg);t.textContent=r.feature;
+    svgEl('rect',{x:m.l,y:yy,width:Math.max(1,iw*Math.max(0,r.value)/mx),height:rh-7,rx:3,fill:css('--accent')},svg);
+    const v=svgEl('text',{x:W-4,y:yy+12,'text-anchor':'end'},svg);v.textContent=(r.value*1000).toFixed(2);});
+  const n=document.createElement('p');n.className='small muted';n.textContent='Units: log-loss increase × 1000.';el.appendChild(n);})();
+$('#foldTable tbody').innerHTML=R.folds.map(f=>`<tr><td>${f.test_start.slice(5)} → ${f.test_end.slice(5)}</td><td>${f.n_train.toLocaleString()}</td><td>${num(f.long.auc,3)}</td><td>${num(f.short.auc,3)}</td><td>${num(f.long.auc_logit,3)}</td><td class="${f.dir_auc>0.53?'pos':''}">${num(f.dir_auc,3)}</td></tr>`).join('');
+
+/* ---------- checklist ---------- */
+const fold=RB.by_fold||[];const posF=fold.length?fold.filter(f=>f.pnl>0).length/fold.length:0;
+const sym=RB.by_symbol||[];const totPos=sym.filter(s=>s.pnl>0).reduce((a,s)=>a+s.pnl,0);const topShare=totPos>0?Math.max(...sym.map(s=>s.pnl))/totPos:1;
+const side=RB.by_direction||[];const tr=RB.by_trend||[];
+const checks=[
+ ['Enough trades for statistical power',S.trades>=300,`${S.trades} out-of-sample trades. Aim for 300+ at minimum; 1,000+ is better for a 5-minute strategy.`],
+ ['Positive net expectancy after costs',netBps>0,`${num(netBps,1)} bp per trade net of ${num(costBps,1)} bp costs.`],
+ ['Mean trade return significant',pv<0.05,`t-test p = ${num(pv,3)}. Needs p < 0.05, and lower if many variants were tried.`],
+ ['Beats random entries',rp<0.05,`${Math.round(rp*100)}% of random-entry samples did as well. Needs under 5%.`],
+ ['Deflated Sharpe above 0.95',(S.deflated_sharpe||0)>0.95,`Deflated Sharpe = ${num(S.deflated_sharpe,2)} after ${C.n_configs_tried} configurations.`],
+ ['Survives 2× costs',(RB.cost_x2?.avg_net_bps||-1)>0,`At 2× cost: ${num(RB.cost_x2?.avg_net_bps,1)} bp per trade.`],
+ ['Profitable in most walk-forward blocks',posF>=0.7,`${Math.round(posF*100)}% of test blocks were profitable. Needs 70%+.`],
+ ['Real directional skill',(D.auc_direction||0)>=0.53,`Direction AUC = ${num(D.auc_direction,3)}. Movement-size AUC does not count.`],
+ ['Works in up and down markets',tr.length===2&&tr.every(t=>t.pnl>0),tr.map(t=>`${t.key}: ${fmt$(t.pnl)}`).join(' · ')||'not enough trades'],
+ ['Not one lucky symbol',topShare<0.3&&totPos>0,totPos>0?`Top symbol makes ${Math.round(topShare*100)}% of gross profit. Needs under 30%.`:'No profitable symbols.'],
+ ['Two or more years across regimes',R.data.sessions>=500,`${R.data.sessions} sessions of history. The free feed only has about 60; buy 2–5 years of minute data.`],
+ ['Paper trading matches backtest',null,'Not started. Run 3+ months of paper trading and compare fill prices, slippage and hit rates to these numbers.'],
+];
+const passed=checks.filter(c=>c[1]===true).length;
+$('#ckScore').className='pill '+(passed===checks.length?'good':passed>=8?'warn':'bad');$('#ckScore').innerHTML=`<span class="dot"></span>${passed} of ${checks.length} passed`;
+$('#checklist').innerHTML=checks.map(([t,ok,d])=>`<div class="check ${ok===true?'pass':ok===false?'fail':'todo'}"><span class="ico" aria-label="${ok===true?'passed':ok===false?'failed':'pending'}">${ok===true?'✓':ok===false?'✕':'…'}</span><span class="t">${t}</span><span class="d">${d}</span></div>`).join('');
+
+/* ---------- stages ---------- */
+const stages=[['Stage 0','Data and plumbing','Leakage tests pass; data-quality report clean.',true],['Stage 1','Research on free data','This page. Pipeline runs end to end on 60 days.',true],['Stage 2','Research on 2–5 years of data','Paid minute data; all checklist items except paper trading pass.',false],['Stage 3','Frozen model, out-of-time holdout','A final untouched year is tested exactly once.',false],['Stage 4','Paper trading, 3–6 months','Live hit rate and slippage within the backtest confidence band.',false],['Stage 5','Tiny real capital','$2–5k, 0.25% risk, same rules. Scale only after 3 months consistent.',false]];
+const nowIdx=stages.findIndex(s=>!s[3]);
+$('#stages').innerHTML=stages.map((s,i)=>`<div class="stage ${i===nowIdx?'now':''}"><span class="n">${s[0].toUpperCase()}${i<nowIdx?' · DONE':i===nowIdx?' · NEXT':''}</span><h3>${s[1]}</h3><span class="gate">${s[2]}</span></div>`).join('');
+$('#foot').textContent=`Generated ${R.generated.slice(0,16).replace('T',' ')} ET · runtime ${R.runtime_s}s · costs: ${CC.half_spread_bps} bp half-spread, ${CC.slippage_bps} bp slippage, ${CC.latency_bps} bp latency, $${CC.commission_per_share}/share commission + SEC/FINRA fees.`;
+})();
+</script>
