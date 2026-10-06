@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EdgeLab: does an intraday ML trading strategy have an edge after costs?</title>
+<meta name="description" content="EdgeLab is an open-source Python research system that tests whether an intraday machine-learning stock strategy has a real edge after trading costs, with walk-forward validation, random baselines and Deflated Sharpe.">
+<meta name="keywords" content="machine learning trading backtest, intraday trading strategy, walk-forward validation, Deflated Sharpe ratio, triple barrier labeling, quantitative research Python">
+<meta name="author" content="Loukas Pavlou">
+<link rel="canonical" href="https://turnedone.github.io/edgelab/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="EdgeLab: honest research into intraday ML trading">
+<meta property="og:description" content="57 out-of-sample trades, −2.7 bp per trade after costs. How to test a trading model without fooling yourself.">
+<meta property="og:url" content="https://turnedone.github.io/edgelab/">
+<meta property="og:image" content="https://turnedone.github.io/edgelab/dashboard.png">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "EdgeLab",
+  "description": "Research system that tests whether an intraday machine-learning strategy on liquid US stocks has a real edge after costs.",
+  "codeRepository": "https://github.com/Turnedone/edgelab",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/MIT",
+  "author": {"@type": "Person", "name": "Loukas Pavlou", "url": "https://turnedone.github.io/"}
+}
+</script>
+<style>
+:root{--bg:#f4f5f7;--card:#ffffff;--line:#dde1e6;--text:#16181d;--muted:#5d6470;--neg:#c0392b;--link:#1f6feb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a20;--line:#2a2f38;--text:#e8eaee;--muted:#9aa1ad;--neg:#ff6b5e;--link:#58a6ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:17px/1.65 "Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--link)}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+nav{display:flex;justify-content:space-between;padding:18px 0;font-weight:700}
+nav a{color:var(--text);text-decoration:none}
+nav a.gh{color:var(--muted)}
+header{padding:40px 0 10px}
+.kicker{font:600 13px/1.4 ui-monospace,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(32px,5.4vw,50px);line-height:1.1;margin:8px 0 16px;letter-spacing:-.02em}
+.lead{font-size:20px;color:var(--muted);max-width:760px}
+.verdict{display:inline-block;margin:6px 0 0;padding:4px 12px;border-radius:999px;background:color-mix(in srgb,var(--neg) 14%,transparent);color:var(--neg);font:600 14px ui-monospace,Consolas,monospace}
+figure{margin:32px 0}
+figure img{width:100%;height:auto;border:1px solid var(--line);border-radius:14px;display:block}
+figcaption{color:var(--muted);font-size:14px;margin-top:8px}
+h2{font-size:28px;margin:52px 0 14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.stat b{display:block;font:600 26px ui-monospace,Consolas,monospace}
+.stat span{color:var(--muted);font-size:14px}
+.neg{color:var(--neg)}
+ul.points li{margin:8px 0}
+pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;font-size:14px}
+.btn{display:inline-block;padding:11px 22px;border-radius:10px;background:var(--text);color:var(--bg);text-decoration:none;font-weight:700}
+footer{margin:60px 0 36px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav><a href="./">EdgeLab</a><a class="gh" href="https://github.com/Turnedone/edgelab">GitHub ↗</a></nav>
+
+<header>
+  <div class="kicker">Intraday ML · 5-minute bars · out-of-sample only</div>
+  <h1>Does an intraday machine-learning stock strategy have a real edge after costs?</h1>
+  <p class="lead">EdgeLab is a research system built to answer that honestly. The default assumption is <b>no edge</b>:
+  a strategy has to prove otherwise out-of-sample, after spread, slippage and fees, against random entries,
+  with every variant it tried counted against it.</p>
+  <p class="verdict">● No statistically significant edge (so far)</p>
+</header>
+
+<figure>
+  <img src="dashboard.png" width="1400" height="1100" alt="EdgeLab dashboard: net −2.7 bp per trade over 57 out-of-sample trades, with a virtual-money account replay">
+  <figcaption>The interactive dashboard replays the model's out-of-sample signals as a virtual-money account.</figcaption>
+</figure>
+
+<main>
+<h2>First result</h2>
+<p>On the free 60-day window of 5-minute bars for 35 liquid US stocks:</p>
+<div class="stats">
+  <div class="stat"><b>57</b><span>out-of-sample trades</span></div>
+  <div class="stat"><b>+2.9 bp</b><span>gross edge per trade</span></div>
+  <div class="stat"><b class="neg">−5.6 bp</b><span>costs per trade</span></div>
+  <div class="stat"><b class="neg">−2.7 bp</b><span>net per trade (p = 0.73)</span></div>
+  <div class="stat"><b>33%</b><span>of random-entry runs did as well</span></div>
+  <div class="stat"><b>0.05</b><span>Deflated Sharpe, 6 configs tried</span></div>
+</div>
+<p>The model's AUC of about 0.75 looked impressive, but it was measuring <b>volatility, not direction</b>
+(direction AUC 0.51). That's exactly the kind of trap EdgeLab is designed to expose.</p>
+
+<h2>How it avoids fooling itself</h2>
+<ul class="points">
+  <li><b>Point-in-time features</b> on 5-minute bars, with an automated look-ahead leakage test.</li>
+  <li><b>Volatility-scaled triple-barrier labels</b> instead of a fixed "+0.4% in 30 minutes" target, which mostly learns volatility.</li>
+  <li><b>Walk-forward validation with purging and embargo</b>, so no information leaks between training and test windows.</li>
+  <li><b>Shallow gradient-boosted trees</b> that must beat a logistic-regression baseline.</li>
+  <li><b>A realistic cost model</b> and deterministic risk rules shared by the backtester and the paper-trading loop.</li>
+  <li><b>Honest metrics</b>: net basis points per trade, bootstrap confidence intervals, random-entry baselines and the Deflated Sharpe ratio.</li>
+  <li><b>Optional Alpaca paper trading</b>, with live trading locked behind explicit stage gates.</li>
+</ul>
+
+<h2>Run it</h2>
+<pre><code>git clone https://github.com/Turnedone/edgelab.git
+cd edgelab
+python -m venv .venv
+.venv/Scripts/pip install -r requirements.txt
+.venv/Scripts/python scripts/run_research.py   # data, walk-forward, backtest, dashboard</code></pre>
+<p><a class="btn" href="https://github.com/Turnedone/edgelab">View the code on GitHub</a></p>
+<p>The full research design, including what usually fails and why, is in
+<a href="https://github.com/Turnedone/edgelab/blob/main/DESIGN.md">DESIGN.md</a>.</p>
+</main>
+
+<footer>Made by <a href="https://turnedone.github.io/">Loukas Pavlou</a> · MIT licensed ·
+This is a research project, not investment advice.</footer>
+</div>
+</body>
+</html>
